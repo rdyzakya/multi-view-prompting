@@ -4,7 +4,7 @@ import numpy as np
 from itertools import permutations
 import torch
 from torch.utils.data import Dataset
-# from transformers import AdamW, T5Tokenizer, T5ForConditionalGeneration
+from transformers import AdamW, T5Tokenizer, T5ForConditionalGeneration
 
 from t5_score import MyT5ForConditionalGenerationScore
 from const import *
@@ -24,20 +24,23 @@ def get_element_tokens(task):
     return dic[task]
 
 
-def get_orders(task, data, args, sents, labels):
-    ## uncomment to calculate orders from scratch
-    # if torch.cuda.is_available():
-    #     device = torch.device('cuda:0')
-    # else:
-    #     device = torch.device("cpu")
-    # tokenizer = T5Tokenizer.from_pretrained("t5-base").to(device)
-    # model = MyT5ForConditionalGenerationScore.from_pretrained(
-    #     "t5-base").to(device)
-    # optim_orders_all = choose_best_order_global(sents, labels, model,
-    #                                         tokenizer, device,
-    #                                         args.task)
-
+def get_orders(task, data, args, sents, labels, name_or_path=None):
+    # uncomment to calculate orders from scratch
     if args.single_view_type == 'rank':
+        if data not in optim_orders_all[task]:
+            if torch.cuda.is_available():
+                device = torch.device('cuda:0')
+            else:
+                device = torch.device("cpu")
+            tokenizer = T5Tokenizer.from_pretrained(name_or_path)
+            model = MyT5ForConditionalGenerationScore.from_pretrained(
+                name_or_path).to(device)
+            res = choose_best_order_global(sents, labels, model,
+                                                    tokenizer, device,
+                                                    args.task)
+            print(task, data)
+            print(res)
+            return res
         orders = optim_orders_all[task][data]
     elif args.single_view_type == 'rand':
         orders = [random.Random(args.seed).choice(
@@ -199,9 +202,9 @@ def choose_best_order_global(sents, labels, model, tokenizer, device, task):
                 order = []
                 content = []
                 for e in each:
-                    order.append(e[0:4])
-                    content.append(e[4:])
-                order_name = " ".join(order)
+                    order.append(e[0:4].strip())
+                    content.append(e[4:].strip())
+                order_name = " ".join(order).strip()
                 content = " ".join(content)
                 permute_object[order_name] = [content, " ".join(each)]
 
@@ -280,7 +283,7 @@ def add_prompt(sent, orders, task, data_name, args):
     return sent
 
 
-def get_para_targets(sents, labels, data_name, data_type, top_k, task, args):
+def get_para_targets(sents, labels, data_name, data_type, top_k, task, args, tokenizer):
     """
     Obtain the target sentence under the paraphrase paradigm
     """
@@ -290,7 +293,7 @@ def get_para_targets(sents, labels, data_name, data_type, top_k, task, args):
         # at most 5 orders for triple tasks
         top_k = min(5, top_k)
 
-    optim_orders = get_orders(task, data_name, args, sents, labels)[:top_k]
+    optim_orders = get_orders(task, data_name, args, sents, labels, tokenizer.name_or_path)[:top_k]
 
     for i in range(len(sents)):
         label = labels[i]
@@ -362,13 +365,13 @@ def get_para_targets(sents, labels, data_name, data_type, top_k, task, args):
     return new_sents, targets
 
 
-def get_para_targets_dev(sents, labels, data_name, task, args):
+def get_para_targets_dev(sents, labels, data_name, task, args, tokenizer):
     """
     Obtain the target sentence under the paraphrase paradigm
     """
     new_sents = []
     targets = []
-    optim_orders = get_orders(task, data_name, args, sents=None, labels=None)
+    optim_orders = get_orders(task, data_name, args, sents=None, labels=None, name_or_path=tokenizer.name_or_path)
     top_order = optim_orders[0].split(" ")
     for sent, label in zip(sents, labels):
         all_quad_sentences = []
@@ -397,7 +400,7 @@ def get_para_targets_dev(sents, labels, data_name, task, args):
     return new_sents, targets
 
 
-def get_transformed_io(data_path, data_name, data_type, top_k, args):
+def get_transformed_io(data_path, data_name, data_type, top_k, args, tokenizer):
     """
     The main function to transform input & target according to the task
     """
@@ -422,17 +425,17 @@ def get_transformed_io(data_path, data_name, data_type, top_k, args):
     if data_type == "train" or args.eval_data_split == "dev" or data_type == "test":
         new_inputs, targets = get_para_targets(inputs, labels, data_name,
                                                data_type, top_k, args.task,
-                                               args)
+                                               args, tokenizer)
     else:
         new_inputs, targets = get_para_targets_dev(inputs, labels, data_name,
-                                                   args.task, args)
+                                                   args.task, args, tokenizer)
 
     print(len(inputs), len(new_inputs), len(targets))
     return new_inputs, targets
 
 
 def get_transformed_io_unified(data_path, task_name, data_name, data_type,
-                               top_k, args):
+                               top_k, args, tokenizer):
     """
     The main function to transform input & target according to the task
     """
@@ -443,10 +446,10 @@ def get_transformed_io_unified(data_path, task_name, data_name, data_type,
     for task, data, sent, label in zip(tasks, datas, sents, labels):
         if data_type == "train" or (data_type == "test" and args.multi_path):
             new_input, target = get_para_targets([sent], [label], data,
-                                                 data_type, top_k, task, args)
+                                                 data_type, top_k, task, args, tokenizer)
         else:
             new_input, target = get_para_targets_dev([sent], [label], data,
-                                                     task, args)
+                                                     task, args, tokenizer)
         new_inputs.extend(new_input)
         targets.extend(target)
 
@@ -495,6 +498,7 @@ class ABSADataset(Dataset):
         )  # might need to squeeze
         target_mask = self.targets[index]["attention_mask"].squeeze(
         )  # might need to squeeze
+        
         return {
             "source_ids": source_ids,
             "source_mask": src_mask,
@@ -507,12 +511,12 @@ class ABSADataset(Dataset):
         if self.args.multi_task:
             inputs, targets = get_transformed_io_unified(
                 self.data_path, self.task_name, self.data_name, self.data_type,
-                self.top_k, self.args)
+                self.top_k, self.args, self.tokenizer)
         else:
             inputs, targets = get_transformed_io(self.data_path,
                                                  self.data_name,
                                                  self.data_type, self.top_k,
-                                                 self.args)
+                                                 self.args, self.tokenizer)
 
         for i in range(len(inputs)):
             # change input and target to two strings

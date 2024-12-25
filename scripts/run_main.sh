@@ -1,12 +1,12 @@
 set -ex
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 declare -A TASK_DATA
-TASK_DATA[asqp]="rest15 rest16"
-TASK_DATA[acos]="laptop16 rest16"
-TASK_DATA[aste]="laptop14"
-TASK_DATA[tasd]="rest15 rest16"
+# TASK_DATA[asqp]="rest15 rest16"
+# TASK_DATA[acos]="laptop16 rest16"
+TASK_DATA[aste]="hotelv2_and_ecommerce"
+# TASK_DATA[tasd]="rest15 rest16"
 
 cd src
 
@@ -32,7 +32,7 @@ mkdir -p $OUT_DIR
 python main.py \
     --data_path "../data/" \
     --dataset $DATA \
-    --model_name_or_path t5-base \
+    --model_name_or_path muchad/idt5-base \
     --output_dir $OUT_DIR \
     --num_train_epochs 20 \
     --save_top_k 0 \

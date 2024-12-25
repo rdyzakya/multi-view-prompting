@@ -119,6 +119,7 @@ optim_orders_all = {
                     '[O] [A] [S]', '[A] [O] [S]', '[O] [S] [A]',
                     '[A] [S] [O]', '[S] [O] [A]', '[S] [A] [O]'
                 ],
+                "hotelv2_and_ecommerce" : ['[A] [O] [S]', '[O] [S] [A]', '[A] [S] [O]', '[O] [A] [S]', '[S] [A] [O]', '[S] [O] [A]']
             },
             "tasd": {
                 "rest15": [
