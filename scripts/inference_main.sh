@@ -5,7 +5,7 @@ export CUDA_VISIBLE_DEVICES=1
 declare -A TASK_DATA
 # TASK_DATA[asqp]="rest15 rest16"
 # TASK_DATA[acos]="laptop16 rest16"
-TASK_DATA[aste]="hotelv2_and_ecommerce"
+TASK_DATA[aste]="dummy_hoasa"
 # TASK_DATA[tasd]="rest15 rest16"
 
 cd src
@@ -17,7 +17,7 @@ for DATA in ${TASK_DATA[${TASK}]}
 do
 for DATA_RATIO in 1.0
 do
-for SEED in 5 10 15 20 25
+for SEED in 5
 do
 for K in 5
 # for K in 3 7 15
@@ -32,7 +32,6 @@ mkdir -p $OUT_DIR
 python main.py \
     --data_path "../data/" \
     --dataset $DATA \
-    --model_name_or_path muchad/idt5-base \
     --output_dir $OUT_DIR \
     --num_train_epochs 20 \
     --save_top_k 0 \
@@ -51,9 +50,10 @@ python main.py \
     --check_val_every_n_epoch 10  \
     --agg_strategy vote \
     --eval_batch_size 64 \
+    --model_name_or_path "/raid/m13519061/ijeei/multi-view-prompting/outputs/aste/hotelv2_and_ecommerce/top5_post_data1.0/final" \
     | tee ${OUT_DIR}/train.log \
     2> ${OUT_DIR}/train.err
-    --model_name_or_path "/raid/m13519061/ijeei/multi-view-prompting/outputs/aste/hotelv2_and_ecommerce/top5_post_data1.0/final" \
+    # --model_name_or_path muchad/idt5-base \
     # --constrained_decode \
     # --do_train \
     # configure the checkpoint path to eval
