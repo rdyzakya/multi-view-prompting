@@ -51,11 +51,12 @@ python main.py \
     --check_val_every_n_epoch 10  \
     --agg_strategy vote \
     --eval_batch_size 64 \
-    --do_train \
     | tee ${OUT_DIR}/train.log \
     2> ${OUT_DIR}/train.err
+    --model_name_or_path "/raid/m13519061/ijeei/multi-view-prompting/outputs/aste/hotelv2_and_ecommerce/top5_post_data1.0/final" \
     # --constrained_decode \
-    # --model_name_or_path "PATH TO THE CHECKPOINT" \ # configure the checkpoint path to eval
+    # --do_train \
+    # configure the checkpoint path to eval
 
     # --load_path_cache \
     # --single_view_type $SVP_TYPE \
